@@ -78,6 +78,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Search, Clock, ArrowRight } from '@element-plus/icons-vue'
+import './non-existent-broken-module'
 
 const props = defineProps({
   records: {
