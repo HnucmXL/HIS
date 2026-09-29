@@ -30,49 +30,54 @@
       </el-select>
     </div>
 
-    <el-table
-      :data="pagedRecords"
-      stripe
-      row-key="id"
-      style="width: 100%"
-      class="record-table"
-      @row-click="handleRowClick"
-    >
-      <el-table-column prop="patientName" label="患者姓名" min-width="120">
-        <template #default="{ row }">
-          <div class="patient-cell">
-            <span class="patient-name">{{ row.patientName }}</span>
-            <span class="patient-meta">{{ row.gender }} · {{ row.age }}岁</span>
+    <div v-if="filteredRecords.length" class="record-grid">
+      <div
+        v-for="record in filteredRecords"
+        :key="record.id"
+        class="record-card"
+        @click="handleCardClick(record)"
+      >
+        <div class="card-header">
+          <div class="patient-info">
+            <span class="patient-name">{{ record.patientName }}</span>
+            <span class="patient-meta">{{ record.gender }} · {{ record.age }}岁</span>
           </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="department" label="科室" min-width="120" />
-      <el-table-column prop="diagnosis" label="诊断" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="visitTime" label="就诊时间" min-width="160" />
-      <el-table-column label="操作" width="100" fixed="right" align="center">
-        <template #default>
-          <el-button link type="primary">查看详情</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+          <el-tag
+            :type="record.status === '已完成' ? 'success' : 'warning'"
+            size="small"
+            effect="light"
+          >
+            {{ record.status }}
+          </el-tag>
+        </div>
 
-    <el-empty v-if="!pagedRecords.length" description="暂无就诊记录" />
+        <div class="card-body">
+          <el-tag class="dept-tag" size="small" type="info" effect="plain">
+            {{ record.department }}
+          </el-tag>
+          <p class="diagnosis" :title="record.diagnosis">{{ record.diagnosis }}</p>
+        </div>
 
-    <div v-if="filteredRecords.length" class="pagination-wrap">
-      <el-pagination
-        v-model:current-page="currentPage"
-        :page-size="pageSize"
-        :total="filteredRecords.length"
-        layout="total, prev, pager, next"
-        background
-      />
+        <div class="card-footer">
+          <span class="visit-time">
+            <el-icon><Clock /></el-icon>
+            {{ record.visitTime }}
+          </span>
+          <span class="detail-link">
+            查看详情
+            <el-icon><ArrowRight /></el-icon>
+          </span>
+        </div>
+      </div>
     </div>
+
+    <el-empty v-else description="暂无就诊记录" />
   </el-card>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
+import { Search, Clock, ArrowRight } from '@element-plus/icons-vue'
 
 const props = defineProps({
   records: {
@@ -85,8 +90,6 @@ const emit = defineEmits(['view-detail'])
 
 const keyword = ref('')
 const department = ref('')
-const currentPage = ref(1)
-const pageSize = 5
 
 const departmentOptions = computed(() =>
   [...new Set(props.records.map((record) => record.department))],
@@ -104,17 +107,8 @@ const filteredRecords = computed(() => {
   })
 })
 
-const pagedRecords = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredRecords.value.slice(start, start + pageSize)
-})
-
-watch([keyword, department], () => {
-  currentPage.value = 1
-})
-
-const handleRowClick = (row) => {
-  emit('view-detail', row)
+const handleCardClick = (record) => {
+  emit('view-detail', record)
 }
 </script>
 
@@ -139,7 +133,7 @@ const handleRowClick = (row) => {
 .search-bar {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .search-input {
@@ -150,16 +144,48 @@ const handleRowClick = (row) => {
   width: 180px;
 }
 
-.record-table {
-  cursor: pointer;
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
 }
 
-.patient-cell {
+.record-card {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background-color: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.record-card:hover {
+  border-color: #409eff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.patient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .patient-name {
+  font-size: 16px;
+  font-weight: 600;
   color: #303133;
 }
 
@@ -168,9 +194,48 @@ const handleRowClick = (row) => {
   color: #909399;
 }
 
-.pagination-wrap {
+.card-body {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dept-tag {
+  align-self: flex-start;
+}
+
+.diagnosis {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f56c6c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px dashed #e4e7ed;
+}
+
+.visit-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.detail-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  color: #409eff;
 }
 </style>
